@@ -11,7 +11,7 @@ import (
 
 var Analyzer = &analysis.Analyzer{
 	Name:     "lint011",
-	Doc:      "LINT-011: interfaces in types package must end with Service or Store",
+	Doc:      "LINT-011: interfaces in types package must end with Service, Store, or Worker",
 	Run:      run,
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 }
@@ -34,8 +34,8 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				continue
 			}
 			name := ts.Name.Name
-			if !strings.HasSuffix(name, "Service") && !strings.HasSuffix(name, "Store") {
-				pass.Reportf(ts.Name.Pos(), "LINT-011: interface %q in types package must end with \"Service\" or \"Store\"", name)
+			if !strings.HasSuffix(name, "Service") && !strings.HasSuffix(name, "Store") && !strings.HasSuffix(name, "Worker") {
+				pass.Reportf(ts.Name.Pos(), "LINT-011: interface %q in types package must end with \"Service\", \"Store\", or \"Worker\"", name)
 			}
 		}
 	})

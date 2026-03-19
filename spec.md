@@ -71,7 +71,7 @@ Default configured exceptions: `types`, `handlertypes`, `params`.
 Only interfaces suffixed with `Service` or `Store` MUST be declared in a `types` package (i.e. a file whose package is `types`). `Service`/`Store` interface declarations found outside of a `types` package MUST be flagged. Exception: packages under `core/` are allowed to declare infrastructure `Service`/`Store` interfaces outside `types`. Other interfaces are allowed outside `types`.
 
 **LINT-011 — Service interface suffix**
-Interfaces whose names do not end with `Service` or `Store` and are located in a `types` package MUST be evaluated. Specifically, interfaces semantically acting as services MUST be suffixed `Service`, and those acting as stores MUST be suffixed `Store`. This rule is best enforced via a naming pattern: any interface in `types` that wraps data access methods and is not suffixed `Store` MUST be flagged; any interface wrapping business logic methods not suffixed `Service` MUST be flagged. In practice, enforce: all interfaces in `types/` MUST end with either `Service` or `Store`.
+Interfaces whose names do not end with `Service`, `Store`, or `Worker` and are located in a `types` package MUST be evaluated. Specifically, interfaces semantically acting as services MUST be suffixed `Service`, those acting as stores MUST be suffixed `Store`, and worker-style interfaces MAY be suffixed `Worker`. In practice, enforce: all interfaces in `types/` MUST end with `Service`, `Store`, or `Worker`.
 
 **LINT-012 — Store function return types**
 In packages whose name contains `store`, methods on receivers suffixed `Store` MUST NOT return types from packages whose import path contains `core/model` (including pointers/slices of those types).

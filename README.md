@@ -48,7 +48,7 @@ Or run the built binary:
 - `LINT-008` Package name underscore
 - `LINT-009` Package name plural (generic detection, exceptions supported)
 - `LINT-010` Interface location (`core/*` packages excluded)
-- `LINT-011` Service/store interface suffix
+- `LINT-011` Service/store/worker interface suffix
 - `LINT-012` Store function return types
 - `LINT-013` Store struct interface assertion
 - `LINT-014` Service struct interface assertion
