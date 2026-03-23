@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"go/ast"
 	"go/format"
-	"go/printer"
 	"go/token"
+	"os"
 	"sort"
 	"strings"
 
@@ -16,7 +16,7 @@ import (
 
 var Analyzer = &analysis.Analyzer{
 	Name:     "fmtfix",
-	Doc:      "FMTFIX: merge consecutive type/const/var declarations, normalize type-block spacing, and reorder top-level declarations (type, const, var, func)",
+	Doc:      "FMTFIX: merge consecutive type/const/var declarations, normalize type-block spacing and return-block spacing, and reorder top-level declarations (type, const, var, func)",
 	Run:      run,
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 }
@@ -135,6 +135,7 @@ func checkFile(pass *analysis.Pass, f *ast.File) {
 
 	items := buildDeclItems(decls)
 	needsTypeSpacing := hasTypeBlockSpacingIssue(pass, f)
+	needsReturnBlockSpacing := hasReturnBlockSpacingIssue(pass, f)
 
 	needsMerge := false
 	for _, item := range items {
@@ -152,7 +153,7 @@ func checkFile(pass *analysis.Pass, f *ast.File) {
 		}
 	}
 
-	if !needsMerge && ordered && !needsTypeSpacing {
+	if !needsMerge && ordered && !needsTypeSpacing && !needsReturnBlockSpacing {
 		return
 	}
 
@@ -173,11 +174,17 @@ func checkFile(pass *analysis.Pass, f *ast.File) {
 			break
 		}
 	}
-	if !needsMerge && ordered && !needsTypeSpacing {
+	if !needsMerge && ordered && !needsTypeSpacing && !needsReturnBlockSpacing {
 		return
 	}
 
-	newSrc := generateText(pass, f, sorted)
+	filename := pass.Fset.File(f.Pos()).Name()
+	fileSrc, err := os.ReadFile(filename)
+	if err != nil {
+		return
+	}
+
+	newSrc := generateText(pass, f, sorted, fileSrc)
 	if newSrc == nil {
 		return
 	}
@@ -200,8 +207,7 @@ func checkFile(pass *analysis.Pass, f *ast.File) {
 	})
 }
 
-func generateText(pass *analysis.Pass, file *ast.File, items []declItem) []byte {
-	commentMap := ast.NewCommentMap(pass.Fset, file, file.Comments)
+func generateText(pass *analysis.Pass, file *ast.File, items []declItem, fileSrc []byte) []byte {
 	var result bytes.Buffer
 	for i, item := range items {
 		if i > 0 {
@@ -209,7 +215,7 @@ func generateText(pass *analysis.Pass, file *ast.File, items []declItem) []byte 
 		}
 		if item.decl != nil {
 			if _, ok := item.decl.(*ast.FuncDecl); ok {
-				funcText := formatDeclWithComments(pass, commentMap, item.decl)
+				funcText := formatFuncDecl(pass, file, item.decl, fileSrc)
 				if funcText == nil {
 					return nil
 				}
@@ -242,16 +248,210 @@ func generateText(pass *analysis.Pass, file *ast.File, items []declItem) []byte 
 	return result.Bytes()
 }
 
-func formatDeclWithComments(pass *analysis.Pass, commentMap ast.CommentMap, decl ast.Decl) []byte {
-	var buf bytes.Buffer
-	node := &printer.CommentedNode{
-		Node:     decl,
-		Comments: commentMap.Filter(decl).Comments(),
-	}
-	if err := format.Node(&buf, pass.Fset, node); err != nil {
+func formatFuncDecl(pass *analysis.Pass, file *ast.File, decl ast.Decl, fileSrc []byte) []byte {
+	fn, ok := decl.(*ast.FuncDecl)
+	if !ok {
 		return nil
 	}
-	return buf.Bytes()
+
+	original := originalDeclText(pass, decl, fileSrc)
+	if original == nil {
+		return nil
+	}
+
+	if fn.Body == nil {
+		return original
+	}
+
+	return normalizeReturnBlockSpacing(pass, file, fn, original)
+}
+
+func originalDeclText(pass *analysis.Pass, decl ast.Decl, fileSrc []byte) []byte {
+	file := pass.Fset.File(decl.Pos())
+	if file == nil {
+		return nil
+	}
+
+	start := file.Offset(declStart(decl))
+	end := file.Offset(decl.End())
+	if start < 0 || end < start || end > len(fileSrc) {
+		return nil
+	}
+
+	out := make([]byte, end-start)
+	copy(out, fileSrc[start:end])
+	return out
+}
+
+type lineEdit struct {
+	start int
+	end   int
+	lines []string
+}
+
+func normalizeReturnBlockSpacing(pass *analysis.Pass, file *ast.File, fn *ast.FuncDecl, src []byte) []byte {
+	startLine := pass.Fset.Position(declStart(fn)).Line
+	lines := strings.Split(string(src), "\n")
+	edits := collectReturnBlockSpacingEdits(pass, file, fn.Body, startLine, lines)
+
+	for _, edit := range edits {
+		if edit.start < 0 || edit.end < edit.start || edit.end > len(lines) {
+			return src
+		}
+		replaced := make([]string, 0, len(lines)-(edit.end-edit.start)+len(edit.lines))
+		replaced = append(replaced, lines[:edit.start]...)
+		replaced = append(replaced, edit.lines...)
+		replaced = append(replaced, lines[edit.end:]...)
+		lines = replaced
+	}
+
+	return []byte(strings.Join(lines, "\n"))
+}
+
+func collectReturnBlockSpacingEdits(pass *analysis.Pass, file *ast.File, root *ast.BlockStmt, startLine int, lines []string) []lineEdit {
+	var edits []lineEdit
+
+	ast.Inspect(root, func(n ast.Node) bool {
+		block, ok := n.(*ast.BlockStmt)
+		if !ok || len(block.List) < 2 {
+			return true
+		}
+
+		for i := 1; i < len(block.List); i++ {
+			prev := block.List[i-1]
+			curr := block.List[i]
+			if !stmtContainsTrailingReturn(prev) {
+				continue
+			}
+
+			if blankLinesBetween(pass, file, prev.End(), curr.Pos()) == 1 {
+				continue
+			}
+
+			prevEndLine := pass.Fset.Position(prev.End()).Line
+			currLine := pass.Fset.Position(curr.Pos()).Line
+			startIdx := prevEndLine - startLine + 1
+			endIdx := currLine - startLine
+			if startIdx < 0 || endIdx < startIdx {
+				continue
+			}
+
+			var comments []string
+			for line := prevEndLine + 1; line < currLine; line++ {
+				idx := line - startLine
+				if idx < 0 || idx >= len(lines) {
+					continue
+				}
+				text := strings.TrimSpace(lines[idx])
+				if text == "" {
+					continue
+				}
+				comments = append(comments, lines[idx])
+			}
+
+			middle := make([]string, 0, len(comments)+1)
+			middle = append(middle, comments...)
+			middle = append(middle, "")
+
+			edits = append(edits, lineEdit{
+				start: startIdx,
+				end:   endIdx,
+				lines: middle,
+			})
+		}
+
+		return true
+	})
+
+	sort.SliceStable(edits, func(i, j int) bool {
+		return edits[i].start > edits[j].start
+	})
+
+	return edits
+}
+
+func hasReturnBlockSpacingIssue(pass *analysis.Pass, file *ast.File) bool {
+	found := false
+	ast.Inspect(file, func(n ast.Node) bool {
+		block, ok := n.(*ast.BlockStmt)
+		if !ok || len(block.List) < 2 {
+			return true
+		}
+
+		for i := 1; i < len(block.List); i++ {
+			prev := block.List[i-1]
+			curr := block.List[i]
+			if stmtContainsTrailingReturn(prev) && blankLinesBetween(pass, file, prev.End(), curr.Pos()) != 1 {
+				found = true
+				return false
+			}
+		}
+
+		return !found
+	})
+
+	return found
+}
+
+func stmtContainsTrailingReturn(stmt ast.Stmt) bool {
+	switch s := stmt.(type) {
+	case *ast.BlockStmt:
+		return blockEndsWithReturn(s)
+	case *ast.ReturnStmt:
+		return true
+	case *ast.IfStmt:
+		if blockEndsWithReturn(s.Body) {
+			return true
+		}
+		return stmtContainsTrailingReturn(s.Else)
+	case *ast.ForStmt:
+		return blockEndsWithReturn(s.Body)
+	case *ast.RangeStmt:
+		return blockEndsWithReturn(s.Body)
+	case *ast.SwitchStmt:
+		return caseClausesContainTrailingReturn(s.Body.List)
+	case *ast.TypeSwitchStmt:
+		return caseClausesContainTrailingReturn(s.Body.List)
+	case *ast.SelectStmt:
+		return commClausesContainTrailingReturn(s.Body.List)
+	case *ast.LabeledStmt:
+		return stmtContainsTrailingReturn(s.Stmt)
+	default:
+		return false
+	}
+}
+
+func blockEndsWithReturn(block *ast.BlockStmt) bool {
+	if block == nil || len(block.List) == 0 {
+		return false
+	}
+	return stmtContainsTrailingReturn(block.List[len(block.List)-1])
+}
+
+func caseClausesContainTrailingReturn(list []ast.Stmt) bool {
+	for _, stmt := range list {
+		clause, ok := stmt.(*ast.CaseClause)
+		if !ok || len(clause.Body) == 0 {
+			continue
+		}
+		if stmtContainsTrailingReturn(clause.Body[len(clause.Body)-1]) {
+			return true
+		}
+	}
+	return false
+}
+
+func commClausesContainTrailingReturn(list []ast.Stmt) bool {
+	for _, stmt := range list {
+		clause, ok := stmt.(*ast.CommClause)
+		if !ok || len(clause.Body) == 0 {
+			continue
+		}
+		if stmtContainsTrailingReturn(clause.Body[len(clause.Body)-1]) {
+			return true
+		}
+	}
+	return false
 }
 
 // buildMergedGenDeclBlock produces a `{type|const|var} ( ... )` block from a slice

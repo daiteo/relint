@@ -1,4 +1,4 @@
-package fmtfix_test
+package fmt006_test
 
 import (
 	"path/filepath"
@@ -7,11 +7,11 @@ import (
 
 	"golang.org/x/tools/go/analysis/analysistest"
 
-	"github.com/alexisvisco/relint/rules/fmtfix"
+	"github.com/alexisvisco/relint/rules/fmt006"
 )
 
 func TestAnalyzer(t *testing.T) {
 	_, thisFile, _, _ := runtime.Caller(0)
 	testdata := filepath.Join(filepath.Dir(thisFile), "..", "..", "example")
-	analysistest.RunWithSuggestedFixes(t, testdata, fmtfix.Analyzer, "fmtfix", "fmtfixtypespacing", "fmtfixcomments", "fmtfixreturnspacing")
+	analysistest.Run(t, testdata, fmt006.Analyzer, "fmt006", "fmt006ok")
 }

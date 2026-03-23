@@ -11,6 +11,7 @@ import (
 	"github.com/alexisvisco/relint/rules/fmt003"
 	"github.com/alexisvisco/relint/rules/fmt004"
 	"github.com/alexisvisco/relint/rules/fmt005"
+	"github.com/alexisvisco/relint/rules/fmt006"
 	"github.com/alexisvisco/relint/rules/fmtfix"
 	"github.com/alexisvisco/relint/rules/lint001"
 	"github.com/alexisvisco/relint/rules/lint002"
@@ -53,6 +54,7 @@ var Analyzers = []*analysis.Analyzer{
 	fmt003.Analyzer,
 	fmt004.Analyzer,
 	fmt005.Analyzer,
+	fmt006.Analyzer,
 	fmtfix.Analyzer,
 	lint001.Analyzer,
 	lint002.Analyzer,

@@ -21,6 +21,9 @@ Interface method signatures MUST be separated by exactly one blank line.
 **FMT-005 — Type block spec spacing**
 Type specs inside `type (...)` blocks MUST be separated by exactly one blank line.
 
+**FMT-006 — Blank line after blocks ending with return**
+When a statement inside a block contains a nested block whose trailing statement is `return`, and another sibling statement follows in the parent block, the parent block MUST contain exactly one blank line between them.
+
 ---
 
 ### Linter (requires static analysis, not auto-fixable)

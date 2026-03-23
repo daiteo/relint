@@ -34,6 +34,7 @@ Or run the built binary:
 - `FMT-003` Function body spacing
 - `FMT-004` Interface method spacing
 - `FMT-005` Type block spec spacing
+- `FMT-006` Blank line after blocks ending with `return`
 - `FMTFIX` Auto-fix suggestions
 
 ### Linter rules
