@@ -7,7 +7,7 @@ import (
 
 	"golang.org/x/tools/go/analysis/analysistest"
 
-	"github.com/alexisvisco/relint/rules/fmtfix"
+	"github.com/daiteo/relint/rules/fmtfix"
 )
 
 func TestAnalyzer(t *testing.T) {

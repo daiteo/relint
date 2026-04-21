@@ -6,7 +6,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 
-	"github.com/alexisvisco/relint/analysisutil"
+	"github.com/daiteo/relint/analysisutil"
 )
 
 var Analyzer = &analysis.Analyzer{

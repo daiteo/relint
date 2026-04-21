@@ -3,7 +3,7 @@ package userstore
 import (
 	"database/sql"
 	"errors"
-	gorm "github.com/alexisvisco/relint/example/src/lint021/gormstub"
+	gorm "github.com/daiteo/relint/example/src/lint021/gormstub"
 )
 
 type UserStore struct{}

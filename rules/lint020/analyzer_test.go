@@ -7,7 +7,7 @@ import (
 
 	"golang.org/x/tools/go/analysis/analysistest"
 
-	"github.com/alexisvisco/relint/rules/lint020"
+	"github.com/daiteo/relint/rules/lint020"
 )
 
 func TestAnalyzer(t *testing.T) {

@@ -3,7 +3,7 @@ package main
 import (
 	"golang.org/x/tools/go/analysis"
 
-	"github.com/alexisvisco/relint/all"
+	"github.com/daiteo/relint/all"
 )
 
 // New returns the list of analyzers for use as a golangci-lint plugin.
@@ -12,4 +12,3 @@ func New(conf any) ([]*analysis.Analyzer, error) {
 }
 
 func main() {}
-

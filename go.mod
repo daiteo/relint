@@ -1,4 +1,4 @@
-module github.com/alexisvisco/relint
+module github.com/daiteo/relint
 
 go 1.26
 

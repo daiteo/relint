@@ -1,9 +1,9 @@
 package lint022
 
 import (
-	"slices"
 	"fmt"
 	"go/ast"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -11,7 +11,7 @@ import (
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
 
-	"github.com/alexisvisco/relint/analysisutil"
+	"github.com/daiteo/relint/analysisutil"
 )
 
 var Analyzer = &analysis.Analyzer{

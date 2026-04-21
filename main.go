@@ -9,7 +9,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/multichecker"
 
-	"github.com/alexisvisco/relint/all"
+	"github.com/daiteo/relint/all"
 )
 
 func main() {
