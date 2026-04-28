@@ -5,7 +5,6 @@ import (
 	"go/ast"
 	"slices"
 	"strings"
-	"unicode"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
@@ -69,8 +68,8 @@ func run(pass *analysis.Pass) (interface{}, error) {
 }
 
 func expectedRouteFiles(handlerName, routeName string) []string {
-	handlerSnake := toSnake(handlerName)
-	routeSnake := toSnake(routeName)
+	handlerSnake := analysisutil.ToSnake(handlerName)
+	routeSnake := analysisutil.ToSnake(routeName)
 	routePart := normalizeRoutePart(handlerSnake, routeSnake)
 	if routePart != "" {
 		return []string{fmt.Sprintf("%s.go", routePart)}
@@ -104,15 +103,4 @@ func pluralize(s string) string {
 		return s + "es"
 	}
 	return s + "s"
-}
-
-func toSnake(s string) string {
-	var result []rune
-	for i, r := range s {
-		if unicode.IsUpper(r) && i > 0 {
-			result = append(result, '_')
-		}
-		result = append(result, unicode.ToLower(r))
-	}
-	return string(result)
 }

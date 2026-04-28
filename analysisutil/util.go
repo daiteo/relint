@@ -6,6 +6,7 @@ import (
 	"go/types"
 	"path/filepath"
 	"strings"
+	"unicode"
 
 	"golang.org/x/tools/go/analysis"
 )
@@ -94,6 +95,24 @@ func isSnakeSegment(s string) bool {
 		}
 	}
 	return true
+}
+
+// ToSnake converts a Go identifier fragment to lowercase snake_case while
+// preserving consecutive capitals as one word.
+func ToSnake(s string) string {
+	runes := []rune(s)
+	var result []rune
+	for i, r := range runes {
+		if unicode.IsUpper(r) && i > 0 {
+			prev := runes[i-1]
+			nextIsLower := i+1 < len(runes) && unicode.IsLower(runes[i+1])
+			if unicode.IsLower(prev) || unicode.IsDigit(prev) || nextIsLower {
+				result = append(result, '_')
+			}
+		}
+		result = append(result, unicode.ToLower(r))
+	}
+	return string(result)
 }
 
 // PackageContainsFile reports whether any file in pass has the given base name.

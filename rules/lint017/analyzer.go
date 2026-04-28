@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"go/ast"
 	"strings"
-	"unicode"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
@@ -34,7 +33,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		if !ok || suffix == "" {
 			return
 		}
-		expectedFile := fmt.Sprintf("require_%s.go", toSnake(suffix))
+		expectedFile := fmt.Sprintf("require_%s.go", analysisutil.ToSnake(suffix))
 		actualFile := analysisutil.FileBasename(pass, fn.Name.Pos())
 		if actualFile != expectedFile {
 			pass.Reportf(fn.Name.Pos(), "LINT-017: middleware %q must be in file %q", name, expectedFile)
@@ -51,15 +50,4 @@ func extractSuffix(name string, prefixes ...string) (string, bool) {
 		}
 	}
 	return "", false
-}
-
-func toSnake(s string) string {
-	var result []rune
-	for i, r := range s {
-		if unicode.IsUpper(r) && i > 0 {
-			result = append(result, '_')
-		}
-		result = append(result, unicode.ToLower(r))
-	}
-	return string(result)
 }
